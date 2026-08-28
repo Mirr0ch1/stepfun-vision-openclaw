@@ -314,6 +314,24 @@ export default definePluginEntry({
       defaultModels,
       autoPriority: { image: 10, video: 10 },
 
+      // Resolve the API key for the media-understanding execution path so the
+      // provider works even without a models.providers.stepfun-vision entry.
+      resolveSyntheticAuth: ({ providerConfig }) => {
+        const cfgKey = expandSecret(providerConfig?.apiKey);
+        if (cfgKey) {
+          return {
+            apiKey: cfgKey,
+            source: `models.providers.${PROVIDER_ID}.apiKey`,
+            mode: "api-key",
+          };
+        }
+        const envKey = process.env[ENV_API_KEY];
+        if (envKey) {
+          return { apiKey: envKey, source: `env: ${ENV_API_KEY}`, mode: "api-key" };
+        }
+        return null;
+      },
+
       describeImage: (req) =>
         callStepFunVision(req, {
           capability: "image",
