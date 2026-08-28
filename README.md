@@ -47,7 +47,7 @@ This plugin registers **StepFun vision models** into OpenClaw's media-understand
 ### 方式一:GitHub 仓库安装(推荐)
 
 ```bash
-openclaw plugins install <your-github-user>/stepfun-vision-openclaw
+openclaw plugins install Mirr0ch1/stepfun-vision-openclaw
 systemctl --user restart openclaw-gateway  # systemd 用户服务;或 openclaw gateway restart
 ```
 
@@ -213,7 +213,7 @@ OpenClaw 的媒体理解优先级规则(基于源码行为):
 ## 开发 / Development
 
 ```bash
-git clone <your-github-user>/stepfun-vision-openclaw
+git clone https://github.com/Mirr0ch1/stepfun-vision-openclaw
 cd stepfun-vision-openclaw
 openclaw plugins install --link .
 systemctl --user restart openclaw-gateway
