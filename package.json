@@ -1,0 +1,21 @@
+{
+  "name": "stepfun-vision-openclaw",
+  "version": "1.1.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "OpenClaw plugin registering StepFun vision models (step-1o-turbo-vision / step-3.7-flash) as image & video understanding providers. Supports both standard API and Step Plan (token-plan) surfaces.",
+  "license": "MIT",
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "stepfun",
+    "vision",
+    "image-understanding",
+    "video-understanding"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

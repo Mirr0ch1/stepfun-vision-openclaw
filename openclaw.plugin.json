@@ -1,0 +1,68 @@
+{
+  "id": "stepfun-vision",
+  "name": "StepFun Vision",
+  "description": "Registers StepFun vision models (step-1o-turbo-vision for standard API users, step-3.7-flash for Step Plan / token-plan users) as image & video understanding providers via the OpenAI-compatible chat completions API.",
+  "version": "1.1.0",
+  "contracts": {
+    "mediaUnderstandingProviders": [
+      "stepfun-vision"
+    ]
+  },
+  "mediaUnderstandingProviderMetadata": {
+    "stepfun-vision": {
+      "capabilities": [
+        "image",
+        "video"
+      ],
+      "defaultModels": {
+        "image": "step-3.7-flash",
+        "video": "step-3.7-flash"
+      },
+      "autoPriority": {
+        "image": 10,
+        "video": 10
+      }
+    }
+  },
+  "setup": {
+    "providers": [
+      {
+        "id": "stepfun-vision",
+        "envVars": [
+          "STEPFUN_API_KEY"
+        ]
+      }
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "surface": {
+        "type": "string",
+        "enum": [
+          "plan",
+          "api"
+        ],
+        "description": "StepFun subscription surface. plan (default) = Step Plan / token-plan users, only step-3.7-flash is used. api = standard pay-per-use API users, step-1o-turbo-vision is preferred."
+      },
+      "defaultPrompt": {
+        "type": "string",
+        "description": "Prompt sent to the model alongside each media attachment. Overrides the plugin default."
+      },
+      "maxTokens": {
+        "type": "integer",
+        "minimum": 64,
+        "description": "max_tokens for chat completions. step-3.7-flash performs reasoning, so keep this >= 1024."
+      },
+      "imageDetail": {
+        "type": "string",
+        "enum": [
+          "low",
+          "high"
+        ],
+        "description": "Image detail level for image_url blocks (OpenAI-compatible). Default: high."
+      }
+    }
+  }
+}
