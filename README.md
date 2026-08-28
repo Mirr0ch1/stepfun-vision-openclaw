@@ -44,14 +44,24 @@ This plugin registers **StepFun vision models** into OpenClaw's media-understand
 
 ## 安装 / Installation
 
-### 方式一:GitHub 仓库安装(推荐)
+### 方式一:ClawHub 安装(可搜索,推荐)
+
+插件已发布到 [ClawHub](https://clawhub.ai)(OpenClaw 公共插件注册表),可直接搜索并安装:
+
+```bash
+openclaw plugins search stepfun-vision
+openclaw plugins install clawhub:@mirr0ch1/stepfun-vision-openclaw
+systemctl --user restart openclaw-gateway  # systemd 用户服务;或 openclaw gateway restart
+```
+
+### 方式二:GitHub 仓库安装
 
 ```bash
 openclaw plugins install Mirr0ch1/stepfun-vision-openclaw
 systemctl --user restart openclaw-gateway  # systemd 用户服务;或 openclaw gateway restart
 ```
 
-### 方式二:本地目录开发链接
+### 方式三:本地目录开发链接
 
 ```bash
 openclaw plugins install --link /path/to/stepfun-vision-openclaw
