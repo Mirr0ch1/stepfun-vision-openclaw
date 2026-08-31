@@ -2,7 +2,7 @@
   "id": "stepfun-vision",
   "name": "StepFun Vision",
   "description": "Registers StepFun vision models (step-1o-turbo-vision for standard API users, step-3.7-flash for Step Plan / token-plan users) as image & video understanding providers via the OpenAI-compatible chat completions API.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "contracts": {
     "mediaUnderstandingProviders": [
       "stepfun-vision"

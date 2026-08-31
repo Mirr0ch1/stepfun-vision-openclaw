@@ -1,6 +1,6 @@
 {
   "name": "@mirr0ch1/stepfun-vision-openclaw",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "main": "index.js",
   "description": "OpenClaw plugin registering StepFun vision models (step-1o-turbo-vision / step-3.7-flash) as image & video understanding providers. Supports both standard API and Step Plan (token-plan) surfaces.",
@@ -18,7 +18,7 @@
       "./index.js"
     ],
     "compat": {
-      "pluginApi": ">=2026.7.1"
+      "pluginApi": ">=2026.4.2"
     },
     "build": {
       "openclawVersion": "2026.7.1"
