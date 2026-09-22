@@ -1,8 +1,8 @@
 {
   "id": "stepfun-vision",
   "name": "StepFun Vision",
-  "description": "Registers StepFun vision models (step-1o-turbo-vision for standard API users, step-3.7-flash for Step Plan / token-plan users) as image & video understanding providers via the OpenAI-compatible chat completions API.",
-  "version": "1.1.1",
+  "description": "Registers StepFun models (step-5-preview and step-3.7-flash for Step Plan / token-plan users, step-1o-turbo-vision for standard API users) as image & video understanding providers via the OpenAI Responses API.",
+  "version": "2.0.0",
   "contracts": {
     "mediaUnderstandingProviders": [
       "stepfun-vision"
@@ -15,8 +15,8 @@
         "video"
       ],
       "defaultModels": {
-        "image": "step-3.7-flash",
-        "video": "step-3.7-flash"
+        "image": "step-5-preview",
+        "video": "step-5-preview"
       },
       "autoPriority": {
         "image": 10,
@@ -44,7 +44,7 @@
           "plan",
           "api"
         ],
-        "description": "StepFun subscription surface. plan (default) = Step Plan / token-plan users, only step-3.7-flash is used. api = standard pay-per-use API users, step-1o-turbo-vision is preferred."
+        "description": "StepFun subscription surface. plan (default) = Step Plan / token-plan users, step-5-preview is the default model (step-3.7-flash recommended as fallback). api = standard pay-per-use API users, step-1o-turbo-vision is preferred. All surfaces call the OpenAI Responses API (/responses)."
       },
       "defaultPrompt": {
         "type": "string",

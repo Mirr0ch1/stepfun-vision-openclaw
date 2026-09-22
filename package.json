@@ -1,9 +1,9 @@
 {
   "name": "@mirr0ch1/stepfun-vision-openclaw",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "type": "module",
   "main": "index.js",
-  "description": "OpenClaw plugin registering StepFun vision models (step-1o-turbo-vision / step-3.7-flash) as image & video understanding providers. Supports both standard API and Step Plan (token-plan) surfaces.",
+  "description": "OpenClaw plugin registering StepFun models (step-5-preview / step-3.7-flash / step-1o-turbo-vision) as image & video understanding providers over the OpenAI Responses API. Supports both standard API and Step Plan (token-plan) surfaces.",
   "license": "MIT",
   "keywords": [
     "openclaw",

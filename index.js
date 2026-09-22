@@ -6,26 +6,45 @@ import {
 } from "openclaw/plugin-sdk/provider-http";
 
 /**
- * StepFun Vision — OpenClaw media understanding provider.
+ * StepFun Vision — OpenClaw media understanding provider (OpenAI Responses API).
  *
  * Registers StepFun vision models as `describeImage` / `describeVideo`
  * providers for the OpenClaw media understanding pipeline.
  *
+ * ── Protocol (2.0.0 — breaking) ───────────────────────────────────────
+ * This plugin speaks the **OpenAI Responses API**, not chat completions:
+ *   - endpoint: POST {baseUrl}/responses
+ *   - body:     { model, max_output_tokens, input: [{ role: "user", content: [...] }] }
+ *   - parts:    { type: "input_text",  text }
+ *               { type: "input_image", image_url: { url: <data URL>, detail } }
+ *               { type: "input_video", video_url: { url: <data URL> } }
+ *   - text out: data.output[].type === "message"
+ *                 -> .content[].type === "output_text"
+ *                 -> .text
+ *
+ * Rejected by StepFun on /responses (verified 2026-09-22):
+ *   - `max_tokens`         -> 400 unknown_parameter (use `max_output_tokens`)
+ *   - flat `reasoning_effort` -> 400 unknown_parameter (use `reasoning: { effort }`)
+ * Not sent by this plugin, but worth knowing.
+ *
  * ── Models ────────────────────────────────────────────────────────────
+ *   - `step-5-preview` — flagship multimodal (text + image + video),
+ *       1M context / 64k max output, reasoning-capable. Available on the
+ *       Step Plan surface (verified live against /step_plan/v1 on 2026-09-22
+ *       for text, image and video input). Default for the `plan` surface.
+ *   - `step-3.7-flash` — cheaper multimodal model, available on BOTH
+ *       surfaces. Recommended as the fallback tier.
  *   - `step-1o-turbo-vision` — fast image/video understanding.
  *       Only available on the STANDARD API surface (pay-per-use).
  *       Against /step_plan/v1 it returns 404 model_invalid.
- *   - `step-3.7-flash`       — flagship multimodal (image + video + text),
- *       available on BOTH surfaces. Recommended for Step Plan users.
  *
  * ── Surfaces & endpoints ──────────────────────────────────────────────
  *   plan (default): Step Plan / token-plan subscription
  *       Standard endpoint is NOT usable; a plan-only key returns
- *       402 quota_exceeded on /v1. Only step-3.7-flash applies.
+ *       402 quota_exceeded on /v1.
  *       CN:   https://api.stepfun.com/step_plan/v1
  *       INTL: https://api.stepfun.ai/step_plan/v1
  *   api: standard pay-per-use API
- *       Both step-1o-turbo-vision and step-3.7-flash are available.
  *       CN:   https://api.stepfun.com/v1
  *       INTL: https://api.stepfun.ai/v1
  *
@@ -46,16 +65,12 @@ import {
  * In auto-discovery mode (no explicit `tools.media` entries) the
  * `mediaUnderstandingProviderMetadata.autoPriority` values are used instead
  * (lower number = higher priority).
- *
- * Wire format (verified against StepFun docs + live tests, 2026-08-29):
- *   - image: { type: "image_url", image_url: { url: <data URL> } }
- *   - video: { type: "video_url", video_url: { url: <data URL> } }
- *   - Response text lives in choices[0].message.content.
  */
 
 const PROVIDER_ID = "stepfun-vision";
 
 // Model ids
+const MODEL_5_PREVIEW = "step-5-preview";
 const MODEL_1O_TURBO_VISION = "step-1o-turbo-vision";
 const MODEL_3_7_FLASH = "step-3.7-flash";
 
@@ -67,7 +82,10 @@ const API_INTL_BASE_URL = "https://api.stepfun.ai/v1";
 
 const DEFAULT_PROMPT =
   "请详细描述这个媒体内容，包括所有可见信息（画面、动作、文字、场景等）。";
-const DEFAULT_MAX_TOKENS = 2048;
+// StepFun counts reasoning tokens against max_output_tokens: at 512 a real
+// call came back status:"incomplete" with no message text at all. 4096 leaves
+// enough headroom for the reasoning trace plus the description.
+const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_IMAGE_DETAIL = "high";
 
 const ENV_API_KEY = "STEPFUN_API_KEY";
@@ -80,7 +98,7 @@ const CUSTOM_LOCAL_AUTH_MARKER = "custom-local";
 // ── 运行时状态(register 时根据 surface 初始化) ─────────────────────────
 
 let surface = "plan"; // "plan" | "api"
-let defaultModel = MODEL_3_7_FLASH;
+let defaultModel = MODEL_5_PREVIEW;
 let defaultBaseUrl = PLAN_CN_BASE_URL;
 
 function resolveSurfaceFromPluginConfig(api) {
@@ -96,7 +114,7 @@ function applySurface() {
     defaultModel = MODEL_1O_TURBO_VISION;
     defaultBaseUrl = API_CN_BASE_URL;
   } else {
-    defaultModel = MODEL_3_7_FLASH;
+    defaultModel = MODEL_5_PREVIEW;
     defaultBaseUrl = PLAN_CN_BASE_URL;
   }
 }
@@ -218,24 +236,31 @@ function toDataUrl(req, kind) {
 
 // ── 请求 / 响应 ───────────────────────────────────────────────────────
 
-function buildChatRequestBody({ model, prompt, mediaBlocks, maxTokens }) {
+function buildResponsesBody({ model, prompt, mediaBlocks, maxTokens }) {
   return {
     model,
-    max_tokens: maxTokens,
-    messages: [
+    max_output_tokens: maxTokens,
+    input: [
       {
         role: "user",
         // StepFun recommends media before the instruction for best results.
-        content: [...mediaBlocks, { type: "text", text: prompt }],
+        content: [...mediaBlocks, { type: "input_text", text: prompt }],
       },
     ],
   };
 }
 
-/** Extract the assistant text from an OpenAI-compatible completion payload. */
-function extractResponseText(data) {
-  const content = data?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content : "";
+/** Extract the assistant text from an OpenAI Responses API payload. */
+function extractResponsesText(data) {
+  const items = Array.isArray(data?.output) ? data.output : [];
+  const parts = [];
+  for (const item of items) {
+    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
+    for (const block of item.content) {
+      if (block?.type === "output_text" && block.text) parts.push(block.text);
+    }
+  }
+  return parts.join("\n").trim();
 }
 
 async function callStepFunVision(req, { capability, mediaBlocks }) {
@@ -260,17 +285,17 @@ async function callStepFunVision(req, { capability, mediaBlocks }) {
         ? { "content-type": "application/json", authorization: `Bearer ${apiKey}` }
         : undefined,
       provider: PROVIDER_ID,
-      api: "openai-completions",
+      api: "openai-responses",
       capability,
       transport: "media-understanding",
     });
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const url = `${baseUrl.replace(/\/+$/, "")}/responses`;
 
   const { response: res, release } = await postJsonRequest({
     url,
     headers,
-    body: buildChatRequestBody({ model, prompt, mediaBlocks, maxTokens }),
+    body: buildResponsesBody({ model, prompt, mediaBlocks, maxTokens }),
     timeoutMs: req.timeoutMs,
     fetchFn,
     allowPrivateNetwork,
@@ -280,7 +305,7 @@ async function callStepFunVision(req, { capability, mediaBlocks }) {
   try {
     await assertOkOrThrowHttpError(res, "StepFun vision description failed");
     const data = await res.json();
-    const text = extractResponseText(data);
+    const text = extractResponsesText(data);
     if (!text) {
       throw new Error("StepFun vision API returned no text content");
     }
@@ -296,8 +321,9 @@ export default definePluginEntry({
   id: PROVIDER_ID,
   name: "StepFun Vision",
   description:
-    "Registers StepFun vision models as image & video understanding providers: " +
-    "step-1o-turbo-vision for standard API users, step-3.7-flash for Step Plan users.",
+    "Registers StepFun vision models as image & video understanding providers via " +
+    "the OpenAI Responses API: step-5-preview for Step Plan users, " +
+    "step-1o-turbo-vision for standard API users, step-3.7-flash as fallback.",
 
   register(api) {
     surface = resolveSurfaceFromPluginConfig(api);
@@ -337,7 +363,7 @@ export default definePluginEntry({
           capability: "image",
           mediaBlocks: [
             {
-              type: "image_url",
+              type: "input_image",
               image_url: {
                 url: toDataUrl(req, "image"),
                 detail: resolveImageDetail(req),
@@ -348,7 +374,7 @@ export default definePluginEntry({
 
       describeImages: (req) => {
         const blocks = (req.images ?? []).map((img) => ({
-          type: "image_url",
+          type: "input_image",
           image_url: {
             url: `data:${resolveParam(
               img.mime,
@@ -368,7 +394,7 @@ export default definePluginEntry({
           capability: "video",
           mediaBlocks: [
             {
-              type: "video_url",
+              type: "input_video",
               video_url: { url: toDataUrl(req, "video") },
             },
           ],
